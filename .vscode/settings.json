@@ -1,0 +1,10 @@
+{
+	"python.defaultInterpreterPath": "./backend/.venv/bin/python",
+	"python.terminal.activateEnvironment": true,
+	"python.analysis.autoImportCompletions": true,
+	"python.languageServer": "Pylance",
+	"python.analysis.diagnosticMode": "workspace",
+	"files.associations": {
+		"*.py": "python"
+	}
+}

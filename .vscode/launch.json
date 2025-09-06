@@ -1,0 +1,18 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Python: FastAPI",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${workspaceFolder}/backend/app/main.py",
+			"python": "${workspaceFolder}/backend/.venv/bin/python",
+			"cwd": "${workspaceFolder}/backend",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}/backend"
+			},
+			"console": "integratedTerminal",
+			"justMyCode": true
+		}
+	]
+}
