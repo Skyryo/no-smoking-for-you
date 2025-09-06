@@ -1,5 +1,5 @@
-# Cloud Run用Dockerfile - Python 3.11ベース
-FROM python:3.11-slim
+# Cloud Run用Dockerfile - Python 3.12ベース
+FROM python:3.12-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -20,7 +20,7 @@ COPY --chown=app:app requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # アプリケーションコードをコピー
-COPY --chown=app:app app/ ./app/
+COPY --chown=app:app . ./app/
 
 # PYTHONPATHを設定
 ENV PYTHONPATH=/app
