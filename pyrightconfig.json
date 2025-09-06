@@ -1,0 +1,22 @@
+{
+	"venvPath": "./backend",
+	"venv": ".venv",
+	"pythonPath": "./backend/.venv/bin/python",
+	"include": ["backend/app", "backend"],
+	"exclude": ["**/node_modules", "**/__pycache__", ".git", "frontend", "tests"],
+	"defineConstant": {
+		"DEBUG": true
+	},
+	"typeCheckingMode": "basic",
+	"useLibraryCodeForTypes": true,
+	"autoSearchPaths": true,
+	"extraPaths": [
+		"./backend",
+		"./backend/app",
+		"./backend/.venv/lib/python3.12/site-packages"
+	],
+	"stubPath": "./backend/.venv/lib/python3.12/site-packages",
+	"reportMissingImports": "warning",
+	"reportMissingTypeStubs": false,
+	"pythonVersion": "3.12"
+}

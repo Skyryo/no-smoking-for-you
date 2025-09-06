@@ -1,7 +1,5 @@
-import React from "react";
-
-const ProcessingStatus: React.FC = () => {
-  return <div>Processing...</div>;
-};
+function ProcessingStatus() {
+	return <div>ProcessingStatus</div>;
+}
 
 export default ProcessingStatus;

@@ -1,7 +1,5 @@
-import React from "react";
-
-const QuestionnaireForm: React.FC = () => {
-  return <div>Questionnaire Form</div>;
-};
+function QuestionnaireForm() {
+	return <div>QuestionnaireForm</div>;
+}
 
 export default QuestionnaireForm;
