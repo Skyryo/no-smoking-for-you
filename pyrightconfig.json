@@ -2,7 +2,6 @@
 	"venvPath": "./backend",
 	"venv": ".venv",
 	"pythonPath": "./backend/.venv/bin/python",
-	"pythonPlatform": "Darwin",
 	"include": ["backend/app", "backend"],
 	"exclude": ["**/node_modules", "**/__pycache__", ".git", "frontend", "tests"],
 	"defineConstant": {
