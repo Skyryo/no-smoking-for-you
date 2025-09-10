@@ -1,4 +1,4 @@
-import React, { useState, useRef, DragEvent, ChangeEvent } from "react";
+import React, { useState, useRef, type DragEvent, type ChangeEvent } from "react";
 import {
   Box,
   Paper,

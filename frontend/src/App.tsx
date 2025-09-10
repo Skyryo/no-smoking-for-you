@@ -1,4 +1,3 @@
-import React from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { CssBaseline, Container, Typography, Box } from "@mui/material";
 import ImageUploader from "./components/ImageUploader";
