@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+from .routers import smoking_habits, questionnaire, diagnosis, result
+
 app = FastAPI(
     title="No Smoking ADK API",
     description="禁煙支援アプリのバックエンドAPI",
@@ -16,6 +18,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ルーターを追加（依存関係のないもののみ）
+app.include_router(smoking_habits.router, prefix="/api/v1", tags=["smoking-habits"])
+app.include_router(questionnaire.router, prefix="/api/v1", tags=["questionnaire"])
+app.include_router(diagnosis.router, prefix="/api/v1", tags=["diagnosis"])
+app.include_router(result.router, prefix="/api/v1", tags=["result"])
 
 @app.get("/")
 async def root():
