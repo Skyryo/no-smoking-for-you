@@ -1,17 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
-app = FastAPI(
-    title="No Smoking ADK API",
-    description="禁煙支援アプリのバックエンドAPI",
-    version="1.0.0"
-)
+app = FastAPI(title="Hello World API", version="1.0.0")
 
-# CORS設定
+# CORS設定 - フロントエンドからのアクセスを許可
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番環境では適切なドメインを指定
+    allow_origins=["*"],  # 本番環境では具体的なオリジンを指定することを推奨
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,13 +14,10 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "No Smoking ADK API is running"}
-
-@app.get("/health")
-async def health_check():
+    """ルートエンドポイント - ヘルスチェック用"""
     return {"status": "healthy"}
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+@app.get("/hello")
+async def hello():
+    """Hello Worldメッセージを返すエンドポイント"""
+    return {"message": "Hello World"}

@@ -4,11 +4,11 @@ import sys
 import os
 
 # Add the backend app to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend/app"))
 
 def test_health_check():
     """Test the health check endpoint"""
-    from app.main import app
+    from api.main import app
     client = TestClient(app)
     
     response = client.get("/health")
@@ -18,18 +18,18 @@ def test_health_check():
 
 def test_root_endpoint():
     """Test the root endpoint"""
-    from app.main import app
+    from api.main import app
     client = TestClient(app)
     
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
-    assert data["message"] == "No Smoking for You API"
+    assert data["message"] == "No Smoking ADK API is running"
 
 def test_upload_endpoint_no_file():
     """Test upload endpoint without file"""
-    from app.main import app
+    from api.main import app
     client = TestClient(app)
     
     response = client.post("/api/v1/upload-image")
@@ -38,7 +38,7 @@ def test_upload_endpoint_no_file():
 
 def test_upload_endpoint_no_auth():
     """Test upload endpoint without authentication"""
-    from app.main import app
+    from api.main import app
     client = TestClient(app)
     
     # Create a minimal JPEG file for testing

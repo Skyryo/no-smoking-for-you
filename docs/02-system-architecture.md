@@ -6,7 +6,29 @@
 
 ## アーキテクチャ概要
 
-### 最小構成アーキテクチャ図
+### 推奨インフラ構成（Cloud Run 分離型）
+
+- FastAPI（API Gateway）は Cloud Run 上で API リクエストを受け付ける専用コンテナとしてデプロイ
+- 各エージェントは用途ごとに独立した Cloud Run コンテナとしてデプロイ
+- API⇔ エージェント間は gRPC または HTTP（REST）で通信
+- マルチエージェントの場合も、用途ごとにコンテナを分離し、スケーリングや障害分離を容易にする
+
+#### Mermaid 図
+
+```mermaid
+flowchart LR
+    subgraph CloudRun
+        APIGW[FastAPI API Gateway]
+        AG1[Agent Container 1]
+        AG2[Agent Container 2]
+        AGn[Agent Container n]
+    end
+    User((User))
+    User-->|HTTP|APIGW
+    APIGW-->|gRPC/HTTP|AG1
+    APIGW-->|gRPC/HTTP|AG2
+    APIGW-->|gRPC/HTTP|AGn
+```
 
 ```mermaid
 graph TB
@@ -62,6 +84,13 @@ graph TB
     API --> FS
     API --> CS
 ```
+
+#### 構成のポイント
+
+- API Gateway（FastAPI）はリクエスト受付・認証・ルーティングのみ担当
+- 各エージェントは用途ごとに独立し、必要に応じて個別スケール・障害分離が可能
+- エージェントは Google ADK や Vertex AI、Cloud Vision API、Imagen API 等の外部 AI サービスと連携
+- データストア（Firestore, Cloud Storage）は API Gateway 経由でアクセス
 
 ### 設計原則（ハッカソン版）
 
