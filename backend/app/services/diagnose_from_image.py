@@ -2,14 +2,12 @@
 画像から喫煙による健康・肌への影響を分析するサービス
 """
 import logging
-from typing import Dict, Any, Optional
-from io import BytesIO
 from PIL import Image
+from fastapi import UploadFile
 from .vertex_ai import VertexAIService
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
-
 
 class ImageAnalysisService:
     """画像分析サービスクラス"""
@@ -24,16 +22,16 @@ class ImageAnalysisService:
         self.vertex_ai_service = vertex_ai_service
         logger.info("ImageAnalysisService initialized")
 
-    async def analyze_image(
+    async def analyze_image_from_upload(
         self,
-        image_bytes: bytes,
+        file: UploadFile,
         analysis_type: str = "smoking_effects"
     ) -> str:
         """
-        画像を分析して喫煙による影響を診断
+        UploadFileから直接画像を分析して喫煙による影響を診断
         
         Args:
-            image_bytes: 画像バイトデータ
+            file: アップロードされた画像ファイル
             analysis_type: 分析タイプ（現在は'smoking_effects'のみ）
             
         Returns:
@@ -45,15 +43,15 @@ class ImageAnalysisService:
         try:
             logger.info(f"Starting image analysis with type: {analysis_type}")
             
-            # 画像を検証
-            self._validate_image(image_bytes)
+            # 画像を検証（ファイルサイズとPIL読み込み可能性）
+            pil_image = self._validate_and_load_image_from_upload(file)
             
             # 分析用プロンプトを作成
             prompt = self._create_analysis_prompt(analysis_type)
             
             # VertexAIサービスの画像分析機能を使用
-            analysis_result = await self.vertex_ai_service.analyze_image_with_text(
-                image_bytes=image_bytes,
+            analysis_result = await self.vertex_ai_service.analyze_image_with_pil(
+                pil_image=pil_image,
                 prompt=prompt
             )
                 
@@ -64,19 +62,33 @@ class ImageAnalysisService:
             logger.error(f"Image analysis failed: {str(e)}")
             raise Exception(f"画像分析に失敗しました: {str(e)}")
 
-    def _validate_image(self, image_bytes: bytes) -> None:
+  
+
+    def _validate_and_load_image_from_upload(self, file: UploadFile) -> Image.Image:
         """
-        画像データを検証
+        UploadFileから画像を検証・読み込み
         
         Args:
-            image_bytes: 画像バイトデータ
+            file: アップロードされた画像ファイル
+            
+        Returns:
+            PIL.Image: 読み込まれた画像
             
         Raises:
             Exception: 画像データが不正な場合
         """
         try:
-            # PILで画像を開いて検証
-            image = Image.open(BytesIO(image_bytes))
+            # ファイルサイズの検証（10MB制限）
+            max_size = 10 * 1024 * 1024  # 10MB
+            file.file.seek(0, 2)  # ファイル末尾に移動
+            file_size = file.file.tell()
+            file.file.seek(0)  # ファイル先頭に戻る
+            
+            if file_size > max_size:
+                raise Exception("ファイルサイズが大きすぎます（最大10MB）")
+            
+            # PILで画像を直接開いて検証
+            image = Image.open(file.file)
             
             # 基本的な検証
             if image.size[0] < 50 or image.size[1] < 50:
@@ -90,6 +102,11 @@ class ImageAnalysisService:
                 raise Exception(f"サポートされていない画像形式です: {image.format}")
                 
             logger.info(f"Image validation passed: {image.format}, {image.size}")
+            
+            # ファイルポインタを先頭に戻す
+            file.file.seek(0)
+            
+            return image
             
         except Exception as e:
             if "画像" in str(e):

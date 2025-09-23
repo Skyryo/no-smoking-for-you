@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from typing import Dict, Any
-from fastapi import FastAPI, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, HTTPException, status, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError, validator
 
@@ -18,6 +18,9 @@ from .services.diagnose_from_text import (
 from .services.diagnose_from_image import (
     ImageAnalysisService,
     create_image_analysis_service
+)
+from .services.generate_image import (
+    generate_image_from_prompt
 )
 
 # ロガーの設定
@@ -79,6 +82,12 @@ class AnalyzeImageResponse(BaseModel):
     """画像分析APIのレスポンスモデル"""
     success: bool = Field(..., description="処理成功フラグ")
     analysis: str = Field(..., description="画像分析結果")
+
+
+class GenerateImageResponse(BaseModel):
+    """画像生成APIのレスポンスモデル"""
+    success: bool = Field(..., description="処理成功フラグ")
+    image_base64: str = Field(..., description="生成された画像のbase64データ")
 
 
 # 画像分析サービスインスタンスを取得
@@ -178,20 +187,11 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeImageResponse:
                 detail="画像ファイルをアップロードしてください"
             )
         
-        # ファイルサイズの検証（10MB制限）
-        max_size = 10 * 1024 * 1024  # 10MB
-        file_content = await file.read()
-        if len(file_content) > max_size:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="ファイルサイズが大きすぎます（最大10MB）"
-            )
-        
         # 画像分析サービスを取得
         image_analysis_service = get_image_analysis_service()
         
-        # 画像分析を実行
-        analysis_result = await image_analysis_service.analyze_image(file_content)
+        # 画像分析を実行（UploadFileを直接渡す）
+        analysis_result = await image_analysis_service.analyze_image_from_upload(file)
         
         logger.info(f"Image analysis completed successfully for file: {file.filename}")
         
@@ -209,6 +209,69 @@ async def analyze_image(file: UploadFile = File(...)) -> AnalyzeImageResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="画像分析処理中に予期しないエラーが発生しました"
+        )
+
+
+@app.post("/api/generate-image", response_model=GenerateImageResponse)
+async def generate_image(
+    prompt: str = Form(..., description="画像生成用のプロンプトテキスト"),
+    file: UploadFile = File(..., description="参考画像（必須）")
+) -> GenerateImageResponse:
+    """
+    プロンプトテキストと参考画像から画像を生成するエンドポイント
+    
+    Args:
+        prompt: 画像生成用のプロンプトテキスト（必須）
+        image: 参考画像ファイル（必須）
+    
+    Returns:
+        生成された画像のbase64データ
+        
+    Raises:
+        HTTPException: バリデーションエラー、生成エラー等
+    """
+    try:
+        logger.info(f"画像生成リクエストを受信: プロンプト='{prompt}', 画像ファイル={file.filename if file else 'なし'}")
+
+        # ファイル形式の検証
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="画像ファイルをアップロードしてください"
+            )
+        
+        if not prompt or not prompt.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="プロンプトテキストは必須です"
+            )
+        
+        # 画像生成の実行
+        try:
+            generated_image_base64 = generate_image_from_prompt(prompt.strip(), file)
+        except Exception as e:
+            logger.error(f"画像生成中にエラーが発生: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"画像生成に失敗しました: {str(e)}"
+            )
+        
+        logger.info("画像生成が正常に完了しました")
+        
+        return GenerateImageResponse(
+            success=True,
+            image_base64=generated_image_base64
+        )
+        
+    except HTTPException:
+        # HTTPExceptionは再発生させる
+        raise
+        
+    except Exception as e:
+        logger.error(f"画像生成処理中に予期しないエラーが発生: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="画像生成処理中に予期しないエラーが発生しました"
         )
 
 

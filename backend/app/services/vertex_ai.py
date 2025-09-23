@@ -59,7 +59,7 @@ class VertexAIService:
             Exception: VertexAI API呼び出しエラー
         """
         try:
-            logger.info("VertexAI text generation starting...")
+            logger.info(f"VertexAI text generation starting... project={self.project_id}, location={self.location}")
             
             # モデル名の決定
             used_model = model_name or self.model_name
@@ -81,17 +81,17 @@ class VertexAIService:
             raise Exception(f"VertexAI テキスト生成に失敗しました: {str(e)}")
 
 
-    async def analyze_image_with_text(
+    async def analyze_image_with_pil(
         self,
-        image_bytes: bytes,
+        pil_image: Image.Image,
         prompt: str,
         model_name: Optional[str] = None
     ) -> str:
         """
-        画像とテキストプロンプトを組み合わせて分析を実行
+        PIL.Imageとテキストプロンプトを組み合わせて分析を実行（効率化版）
         
         Args:
-            image_bytes: 画像バイトデータ
+            pil_image: PIL.Image オブジェクト
             prompt: 分析用プロンプト
             model_name: 使用するモデル名（省略時はデフォルト）
             
@@ -102,17 +102,14 @@ class VertexAIService:
             Exception: VertexAI API呼び出しエラー
         """
         try:
-            logger.info("VertexAI image analysis starting...")
+            logger.info(f"VertexAI image analysis starting... project={self.project_id}, location={self.location}")
             
             # モデル名の決定
             used_model = model_name or self.model_name
             
-            # 画像をPIL Imageオブジェクトに変換
-            image_pil = Image.open(BytesIO(image_bytes))
-            
             response = self.client.models.generate_content(
                 model=used_model,
-                contents=[prompt, image_pil]
+                contents=[prompt, pil_image]
             )
             
             if not response.text:
@@ -159,24 +156,6 @@ class VertexAIService:
                 "project_id": self.project_id,
                 "location": self.location
             }
-
-    async def test_connection(self, test_prompt: str = "Hello, this is a test.") -> bool:
-        """
-        VertexAI接続をテスト
-        
-        Args:
-            test_prompt: テスト用プロンプト
-            
-        Returns:
-            接続テスト成功フラグ
-        """
-        try:
-            await self.generate_text(test_prompt)
-            return True
-        except Exception as e:
-            logger.error(f"Connection test failed: {str(e)}")
-            return False
-
 
 # サービスインスタンスを作成（実際の使用時にproject_idを設定）
 def create_vertex_ai_service(
