@@ -45,10 +45,8 @@ class ImageAnalysisService:
             
             # 画像を検証（ファイルサイズとPIL読み込み可能性）
             pil_image = self._validate_and_load_image_from_upload(file)
-            
             # 分析用プロンプトを作成
             prompt = self._create_analysis_prompt(analysis_type)
-            
             # VertexAIサービスの画像分析機能を使用
             analysis_result = await self.vertex_ai_service.analyze_image_with_pil(
                 pil_image=pil_image,
@@ -126,18 +124,16 @@ class ImageAnalysisService:
         """
         if analysis_type == "smoking_effects":
             return """
-この画像を分析して、喫煙による健康や肌への影響の兆候を詳しく調べてください。
+アップロードされた喫煙者の画像を分析し、喫煙が外見に与えている可能性のある影響を評価してください。
 
-分析してください：
-1. 肌の状態（しわ、くすみ、色素沈着、弾力性など）
-2. 歯や歯茎の状態（黄ばみ、歯茎の色など）
-3. 目の周りの状態（クマ、小じわなど）
-4. 全体的な健康的な印象
+【分析ポイント】
+・肌の状態（色調、質感、透明感）
+・しわの深さと分布
+・口周りの特徴
+・全体的な老化の兆候
 
-可能な限り具体的で建設的なアドバイスを含めて、分析結果を日本語で返してください。
-ただし、医学的診断ではなく、一般的な健康・美容に関する観察結果として提示してください。
+250文字程度で現在の状態を簡潔に述べてください
 
-画像に人物が写っていない場合や分析できない場合は、その旨を説明してください。
 """
         else:
             return f"画像を分析してください。分析タイプ: {analysis_type}"
