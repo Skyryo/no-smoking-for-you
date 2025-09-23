@@ -28,6 +28,14 @@ docker buildx build \
   .
 ```
 
+# Docker イメージをビルド（GCR タグ付き）
+
+```bash
+docker buildx build --platform linux/amd64 -t gcr.io/no-smoking-adk-app/no-smoking-frontend:latest .
+
+docker push gcr.io/no-smoking-adk-app/no-smoking-frontend:latest
+```
+
 ### 2. Google Container Registry (GCR) へのプッシュ
 
 ```bash
