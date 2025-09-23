@@ -2,15 +2,22 @@ import logging
 import os
 import uuid
 from typing import Dict, Any
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError, validator
 
 from .services.vertex_ai import (
-    SmokingAnalysisRequest, 
-    SmokingAnalysisResponse, 
-    VertexAIService,
-    create_vertex_ai_service
+    get_vertex_ai_service
+)
+from .services.diagnose_from_text import (
+    SmokingAnalysisRequest,
+    SmokingAnalysisResponse,
+    create_diagnosis_prompt,
+    parse_diagnosis_response
+)
+from .services.diagnose_from_image import (
+    ImageAnalysisService,
+    create_image_analysis_service
 )
 
 # ロガーの設定
@@ -68,17 +75,23 @@ class ErrorResponse(BaseModel):
     detail: str = Field(None, description="詳細エラー情報")
 
 
-# VertexAIサービスインスタンスを取得
-def get_vertex_ai_service() -> VertexAIService:
-    """VertexAIサービスインスタンスを取得"""
-    # project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-    project_id = "no-smoking-adk-app"
-    if not project_id:
+class AnalyzeImageResponse(BaseModel):
+    """画像分析APIのレスポンスモデル"""
+    success: bool = Field(..., description="処理成功フラグ")
+    analysis: str = Field(..., description="画像分析結果")
+
+
+# 画像分析サービスインスタンスを取得
+def get_image_analysis_service() -> ImageAnalysisService:
+    """画像分析サービスインスタンスを取得"""
+    try:
+        vertex_ai_service = get_vertex_ai_service()
+        return create_image_analysis_service(vertex_ai_service)
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Cloud Project IDが設定されていません"
+            detail=f"VertexAIサービスの初期化に失敗しました: {str(e)}"
         )
-    return create_vertex_ai_service(project_id)
 
 
 @app.post("/api/diagnose", response_model=DiagnoseResponse)
@@ -96,23 +109,24 @@ async def diagnose(request: DiagnoseRequest) -> DiagnoseResponse:
         HTTPException: バリデーションエラー、サーバーエラー等
     """
     try:
-        # セッションIDのバリデーション
+        logger.info(f"Received diagnosis request for session: {request.session_id}")
+        # VertexAIサービスを取得
         try:
-            uuid.UUID(request.session_id)
-        except ValueError:
-            logger.warning(f"Invalid session_id format: {request.session_id}")
+            vertex_ai_service = get_vertex_ai_service()
+        except Exception as e:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="session_idはUUID形式である必要があります"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"VertexAIサービスの初期化に失敗しました: {str(e)}"
             )
         
-        logger.info(f"Starting diagnosis for session: {request.session_id}")
+        # 診断用プロンプトを作成
+        prompt = create_diagnosis_prompt(request.questionnaire)
         
-        # VertexAIサービスを取得
-        vertex_ai_service = get_vertex_ai_service()
+        # VertexAI APIを呼び出してテキスト生成
+        response_text = await vertex_ai_service.generate_text(prompt)
         
-        # 問診データの分析を実行
-        analysis_result = await vertex_ai_service.analyze_smoking_data(request.questionnaire)
+        # レスポンスをパースして診断結果を作成
+        analysis_result = parse_diagnosis_response(response_text)
         
         logger.info(f"Diagnosis completed successfully for session: {request.session_id}")
         
@@ -140,6 +154,64 @@ async def diagnose(request: DiagnoseRequest) -> DiagnoseResponse:
         )
 
 
+@app.post("/api/analyze-image", response_model=AnalyzeImageResponse)
+async def analyze_image(file: UploadFile = File(...)) -> AnalyzeImageResponse:
+    """
+    アップロードされた画像から喫煙による健康・肌への影響を分析するエンドポイント
+    
+    Args:
+        file: アップロードされた画像ファイル
+    
+    Returns:
+        画像分析結果
+        
+    Raises:
+        HTTPException: ファイル形式エラー、分析エラー等
+    """
+    try:
+        logger.info(f"Received image analysis request: {file.filename}")
+        
+        # ファイル形式の検証
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="画像ファイルをアップロードしてください"
+            )
+        
+        # ファイルサイズの検証（10MB制限）
+        max_size = 10 * 1024 * 1024  # 10MB
+        file_content = await file.read()
+        if len(file_content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ファイルサイズが大きすぎます（最大10MB）"
+            )
+        
+        # 画像分析サービスを取得
+        image_analysis_service = get_image_analysis_service()
+        
+        # 画像分析を実行
+        analysis_result = await image_analysis_service.analyze_image(file_content)
+        
+        logger.info(f"Image analysis completed successfully for file: {file.filename}")
+        
+        return AnalyzeImageResponse(
+            success=True,
+            analysis=analysis_result
+        )
+        
+    except HTTPException:
+        # HTTPExceptionは再発生させる
+        raise
+        
+    except Exception as e:
+        logger.error(f"Unexpected error during image analysis for file {file.filename}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="画像分析処理中に予期しないエラーが発生しました"
+        )
+
+
 @app.get("/api/health")
 async def health_check() -> Dict[str, Any]:
     """
@@ -150,8 +222,14 @@ async def health_check() -> Dict[str, Any]:
     """
     try:
         # VertexAIサービスのヘルスチェック
-        vertex_ai_service = get_vertex_ai_service()
-        vertex_ai_status = vertex_ai_service.health_check()
+        try:
+            vertex_ai_service = get_vertex_ai_service()
+            vertex_ai_status = vertex_ai_service.health_check()
+        except Exception as e:
+            vertex_ai_status = {
+                "status": "unhealthy",
+                "message": f"VertexAIサービスの初期化に失敗しました: {str(e)}"
+            }
         
         return {
             "status": "healthy",
