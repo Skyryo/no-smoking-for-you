@@ -36,7 +36,7 @@ export interface DiagnoseRequest {
  * 診断レスポンスの型定義
  */
 export interface DiagnoseResponse {
-	diagnosis: string;
+	predicted_impact: string;
 	confidence: number;
 	recommendations: string[];
 	riskLevel: "low" | "medium" | "high";
@@ -48,13 +48,7 @@ export interface DiagnoseResponse {
  */
 export interface AnalyzeImageResponse {
 	analysis: string;
-	detectedObjects: string[];
-	confidence: number;
-	metadata: {
-		imageSize: string;
-		format: string;
-		timestamp: string;
-	};
+	success: boolean;
 }
 
 /**
@@ -93,16 +87,8 @@ export type CigaretteType = "通常タバコ" | "メンソールタバコ" | "�
  * 喫煙カウンセリング結果の型定義
  */
 export interface SmokingCounselingResponse {
-	counseling_result: string;
-	recommendations: string[];
-	risk_assessment: {
-		level: "low" | "medium" | "high" | "very_high";
-		factors: string[];
+	data: {
+		impact_on_appearance: string;
+		predicted_impact: string;
 	};
-	personalized_plan: {
-		short_term_goals: string[];
-		long_term_goals: string[];
-		support_resources: string[];
-	};
-	timestamp: string;
 }

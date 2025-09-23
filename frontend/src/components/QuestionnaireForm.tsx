@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	Box,
 	Card,
@@ -39,8 +39,10 @@ import type {
 	Gender,
 	CigaretteType,
 	SmokingCounselingResponse,
+	AnalyzeImageResponse,
 } from "../interface";
 import ImageUploader from "./ImageUploader";
+import ResultDisplay from "./ResultDisplay";
 
 // 健康問題の選択肢
 const HEALTH_ISSUES_OPTIONS = [
@@ -75,8 +77,13 @@ function QuestionnaireForm() {
 	// UI状態の管理
 	const [loading, setLoading] = useState(false);
 	const [result, setResult] = useState<SmokingCounselingResponse | null>(null);
+	const [responseAnalyzeImage, setResponseAnalyzeImage] =
+		useState<AnalyzeImageResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [base64Image, setBase64Image] = useState<string | null>(null);
+	const [currentImageBase64, setCurrentImageBase64] = useState<string | null>(
+		null
+	);
 
 	// フォームデータの更新関数
 	const updateFormData = (field: keyof DiagnoseRequest, value: any) => {
@@ -95,6 +102,24 @@ function QuestionnaireForm() {
 		);
 	};
 
+	const fileToBase64 = async (file: File): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () => {
+				if (typeof reader.result === "string") {
+					// "data:image/jpeg;base64," の部分を除去してBase64文字列のみを取得
+					const base64 = reader.result.split(",")[1];
+					resolve(base64);
+				} else {
+					reject(new Error("Failed to read file"));
+				}
+			};
+
+			reader.onerror = () => reject(reader.error);
+			reader.readAsDataURL(file);
+		});
+	};
 	// フォーム送信処理
 	const handleSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
@@ -115,7 +140,6 @@ function QuestionnaireForm() {
 				fetchSmokingCounseling(formData),
 				fetchAnalyzeImage(imageFormData),
 			]);
-
 			// 画像生成用のFormDataを作成
 			const generateFormData = new FormData();
 			generateFormData.append("file", file);
@@ -127,14 +151,13 @@ function QuestionnaireForm() {
 			// );
 			generateFormData.append(
 				"prompt",
-				"20年後の喫煙による健康被害をリアルに描写した画像を生成して"
+				`his/her age: ${formData.current_age}, his/her smoking habit: ${formData.daily_cigarettes} cigarettes/day,start smoking: ${formData.smoking_start_age} future predicted effects: ${response.data.predicted_impact}`
 			);
 			const responseGenerateImage = await fetchGenerateImage(generateFormData);
-			console.log("Generated Image response:", responseGenerateImage);
-			console.log("responseAnalyzeImage :", responseAnalyzeImage);
-			console.log("Counseling response:", response);
+
 			setBase64Image(responseGenerateImage.image_base64);
 			setResult(response);
+			setResponseAnalyzeImage(responseAnalyzeImage);
 		} catch (err) {
 			if (err instanceof ApiError) {
 				setError(`APIエラー: ${err.message}`);
@@ -146,51 +169,28 @@ function QuestionnaireForm() {
 		}
 	};
 
+	// ファイルがアップロードされた時にBase64に変換
+	useEffect(() => {
+		if (file) {
+			fileToBase64(file).then(setCurrentImageBase64).catch(console.error);
+		} else {
+			setCurrentImageBase64(null);
+		}
+	}, [file]);
+
 	// 結果表示
-	if (result) {
+	if (result && base64Image && currentImageBase64 && responseAnalyzeImage) {
 		return (
-			<Card sx={{ maxWidth: 800, margin: "20px auto" }}>
-				<CardHeader
-					title="喫煙カウンセリング結果"
-					avatar={<HealthIcon color="primary" />}
-				/>
-				<CardContent>
-					<Typography variant="h6" gutterBottom>
-						カウンセリング結果
-					</Typography>
-					<Typography paragraph>{result.counseling_result}</Typography>
-					{base64Image && (
-						<Box textAlign="center" my={2}>
-							<img
-								src={`data:image/png;base64,${base64Image}`}
-								alt="Generated Result"
-								style={{ maxWidth: "100%", height: "auto", borderRadius: 8 }}
-							/>
-						</Box>
-					)}
-
-					<Divider sx={{ my: 2 }} />
-
-					<Typography variant="h6" gutterBottom>
-						推奨事項
-					</Typography>
-					{/* {result.recommendations.map((recommendation, index) => (
-						<Typography key={index} paragraph>
-							• {recommendation}
-						</Typography>
-					))} */}
-
-					<Divider sx={{ my: 2 }} />
-
-					<Button
-						variant="outlined"
-						onClick={() => setResult(null)}
-						sx={{ mt: 2 }}
-					>
-						新しく診断する
-					</Button>
-				</CardContent>
-			</Card>
+			<ResultDisplay
+				currentImage={currentImageBase64}
+				futureImage={base64Image}
+				diagnosisReport={result}
+				onClickReset={() => {
+					setResult(null);
+					setCurrentImageBase64(null);
+				}}
+				imageAnalysisResult={responseAnalyzeImage.analysis}
+			/>
 		);
 	}
 

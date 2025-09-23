@@ -50,30 +50,10 @@ class SmokingAnalysisRequest(BaseModel):
             raise ValueError('喫煙開始年齢は現在の年齢以下である必要があります')
         return v
 
-
-class SmokingHabitsResults(BaseModel):
-    """喫煙習慣の分析結果"""
-    smoking_duration_years: int
-    pack_years: float
-    addiction_level: str
-    health_risk_score: int
-    quit_success_probability: float
-
-
-class CurrentEffectsResults(BaseModel):
-    """現在の影響分析結果"""
-    respiratory_impact: str
-    cardiovascular_impact: str
-    skin_condition_assessment: str
-    overall_health_status: str
-
-
 class SmokingAnalysisResponse(BaseModel):
     """分析結果のレスポンスモデル"""
-    current_skin_status: str
+    impact_on_appearance: str
     predicted_impact: str
-    smoking_habits_results: SmokingHabitsResults
-    current_effects_results: CurrentEffectsResults
 
 
 def create_diagnosis_prompt(data: SmokingAnalysisRequest) -> str:
@@ -95,7 +75,7 @@ def create_diagnosis_prompt(data: SmokingAnalysisRequest) -> str:
         medical_advice_text = data.previous_medical_advice
 
     prompt = f"""
-あなたは経験豊富な医師として、以下の喫煙者の問診データを分析し、肌の状態と健康への影響を評価してください。
+あなたは医療専門家です。以下の患者データを基に、喫煙が健康に与える影響及び肌や見た目に与える影響を分析してください。
 
 ## 患者データ
 - 年齢: {data.current_age}歳
@@ -115,29 +95,14 @@ def create_diagnosis_prompt(data: SmokingAnalysisRequest) -> str:
 以下のJSON形式で回答してください：
 
 {{
-    "current_skin_status": "現在の肌の状態の詳細な評価（200文字程度）",
-    "predicted_impact": "今後予想される健康への影響（200文字程度）",
-    "smoking_habits_results": {{
-        "smoking_duration_years": 喫煙年数（整数）,
-        "pack_years": パック・イヤー（浮動小数点）,
-        "addiction_level": "依存度レベル（軽度/中等度/重度）",
-        "health_risk_score": "健康リスクスコア（1-100の整数）",
-        "quit_success_probability": "禁煙成功確率（0-1の浮動小数点）"
-    }},
-    "current_effects_results": {{
-        "respiratory_impact": "呼吸器への影響（100文字程度）",
-        "cardiovascular_impact": "心血管系への影響（100文字程度）",
-        "skin_condition_assessment": "肌状態の評価（100文字程度）",
-        "overall_health_status": "総合的な健康状態（100文字程度）"
-    }}
+    "impact_on_appearance": "見た目への影響（200文字程度。必ず英語で回答して）",
+    "predicted_impact": "今後予想される健康への影響（200文字程度。必ず日本語で回答して）",
 }}
 
 ## 注意事項
 - 医学的根拠に基づいた分析を行ってください
-- 肌への影響を特に重視してください
-- パック・イヤー = (1日の喫煙本数 ÷ 20) × 喫煙年数で計算してください
-- 禁煙成功確率は過去の試行回数と現在の状況を考慮してください
-- 健康リスクスコアは総合的な健康リスクを1-100で評価してください
+- 肌や見た目への影響は英語で具体的に記述してください
+- 今後予想される健康への影響は日本語で具体的に記述してください
 """
     return prompt
 
@@ -168,15 +133,10 @@ def parse_diagnosis_response(response_text: str) -> SmokingAnalysisResponse:
         # JSONをパース
         response_data = json.loads(json_text)
         
-        # Pydanticモデルに変換
-        smoking_habits = SmokingHabitsResults(**response_data["smoking_habits_results"])
-        current_effects = CurrentEffectsResults(**response_data["current_effects_results"])
         
         result = SmokingAnalysisResponse(
-            current_skin_status=response_data["current_skin_status"],
             predicted_impact=response_data["predicted_impact"],
-            smoking_habits_results=smoking_habits,
-            current_effects_results=current_effects
+            impact_on_appearance=response_data["impact_on_appearance"]
         )
         
         return result
@@ -191,23 +151,3 @@ def parse_diagnosis_response(response_text: str) -> SmokingAnalysisResponse:
         logger.error(f"Response parsing error: {str(e)}")
         raise Exception(f"レスポンス処理中にエラーが発生しました: {str(e)}")
 
-
-def calculate_smoking_statistics(data: SmokingAnalysisRequest) -> Dict[str, Any]:
-    """
-    問診データから基本的な喫煙統計を計算
-    
-    Args:
-        data: 問診データ
-        
-    Returns:
-        喫煙統計情報
-    """
-    smoking_duration = data.current_age - data.smoking_start_age
-    pack_years = (data.daily_cigarettes / 20) * smoking_duration
-    
-    return {
-        "smoking_duration_years": smoking_duration,
-        "pack_years": round(pack_years, 2),
-        "daily_cigarettes": data.daily_cigarettes,
-        "cigarette_type": data.cigarette_type.value
-    }

@@ -40,7 +40,7 @@ def generate_image_from_prompt(prompt: str, upload_file: UploadFile) -> str:
         # 画像生成の実行
         response = client.models.generate_content(
             model="gemini-2.5-flash-image-preview",
-            contents=[f"{prompt}", image],
+            contents=[f"generate 20 years laters smoking effects appearance. his/her smoking habit is here: {prompt}", image],
             config=types.GenerateContentConfig(
               response_modalities=[
                 types.Modality.TEXT,
