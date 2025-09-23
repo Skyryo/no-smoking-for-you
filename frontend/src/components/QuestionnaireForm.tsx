@@ -131,6 +131,7 @@ function QuestionnaireForm() {
 			);
 			const responseGenerateImage = await fetchGenerateImage(generateFormData);
 			console.log("Generated Image response:", responseGenerateImage);
+			console.log("responseAnalyzeImage :", responseAnalyzeImage);
 			console.log("Counseling response:", response);
 			setBase64Image(responseGenerateImage.image_base64);
 			setResult(response);
