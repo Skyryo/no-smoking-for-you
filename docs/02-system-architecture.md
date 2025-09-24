@@ -20,43 +20,35 @@
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
-    participant Frontend as フロントエンド<br/>(App Engine)
-    participant Storage as Cloud Storage<br/>(画像保存)
+    participant Frontend as フロントエンド<br/>(Cloud Run)
     participant DiagnosisAPI as 診断API<br/>(Cloud Run)
     participant ImageGenAPI as 画像生成API<br/>(Cloud Run)
-    participant VertexAI as Vertex AI<br/>(Gemini, Imagen)
+    participant VertexAI as Gemini<br/>(Vertex AI)
 
     User->>Frontend: 1. 顔写真選択 + 問診回答
     Frontend->>Frontend: 2. クライアント側検証<br/>(サイズ・形式チェック)
 
-    Note over Frontend,Storage: 画像アップロードフェーズ
-    Frontend->>Frontend: 3. 署名付きURL生成リクエスト準備
-    Frontend->>Storage: 4. 署名付きURLで画像アップロード<br/>(PUT /bucket/user-{id}/{timestamp}.jpg)
-    Storage-->>Frontend: 5. アップロード完了<br/>(GCS URL返却)
-
     Note over Frontend,DiagnosisAPI: 診断フェーズ
-    Frontend->>DiagnosisAPI: 6. POST /api/diagnose<br/>{image_gcs_path, questionnaire}
-    DiagnosisAPI->>Storage: 7. 画像取得<br/>(GCS URLから読み込み)
-    Storage-->>DiagnosisAPI: 8. 画像データ返却
-    DiagnosisAPI->>VertexAI: 9. Gemini API呼び出し<br/>画像分析 + 問診解析
-    VertexAI-->>DiagnosisAPI: 10. 分析結果<br/>(現在の肌状態、予測される影響)
-    DiagnosisAPI->>DiagnosisAPI: 11. 診断レポート生成<br/>(インメモリ処理)
-    DiagnosisAPI-->>Frontend: 12. 診断結果JSON返却
+    Frontend->>DiagnosisAPI: 3. POST /api/diagnose<br/>{image_data(Base64), questionnaire}
+    DiagnosisAPI->>DiagnosisAPI: 4. 画像データデコード<br/>(Base64→バイナリ)
+    DiagnosisAPI->>VertexAI: 5. Gemini API呼び出し<br/>画像分析 + 問診解析
+    VertexAI-->>DiagnosisAPI: 6. 分析結果<br/>(現在の肌状態、予測される影響)
+    DiagnosisAPI->>DiagnosisAPI: 7. 診断レポート生成<br/>(インメモリ処理)
+    DiagnosisAPI-->>Frontend: 8. 診断結果JSON返却
 
     Note over Frontend,ImageGenAPI: 画像生成フェーズ
-    Frontend->>ImageGenAPI: 13. POST /api/generate-image<br/>{diagnosis_result, image_gcs_path}
-    ImageGenAPI->>Storage: 14. 元画像取得
-    Storage-->>ImageGenAPI: 15. 画像データ返却
-    ImageGenAPI->>ImageGenAPI: 16. プロンプト生成<br/>(診断結果を反映)
-    ImageGenAPI->>VertexAI: 17. Imagen API呼び出し<br/>20年後予測画像生成
-    VertexAI-->>ImageGenAPI: 18. 生成画像データ
-    ImageGenAPI->>Storage: 19. 生成画像保存<br/>(オプション)
-    ImageGenAPI-->>Frontend: 20. 生成画像URL返却
+    Frontend->>ImageGenAPI: 9. POST /api/generate-image<br/>{diagnosis_result, image_data(Base64)}
+    ImageGenAPI->>ImageGenAPI: 10. 画像データデコード<br/>(Base64→バイナリ)
+    ImageGenAPI->>ImageGenAPI: 11. プロンプト生成<br/>(診断結果を反映)
+    ImageGenAPI->>VertexAI: 12. Gemini-2.5-flash-image呼び出し<br/>20年後予測画像生成
+    VertexAI-->>ImageGenAPI: 13. 生成画像データ
+    ImageGenAPI->>ImageGenAPI: 14. 生成画像エンコード<br/>(バイナリ→Base64)
+    ImageGenAPI-->>Frontend: 15. 生成画像データ返却<br/>(Base64形式)
 
-    Frontend->>Frontend: 21. 結果データ統合
-    Frontend->>User: 22. 結果表示<br/>(診断レポート + ビフォーアフター画像)
+    Frontend->>Frontend: 16. 結果データ統合
+    Frontend->>User: 17. 結果表示<br/>(診断レポート + ビフォーアフター画像)
 
-    Note over User,Storage: 一定期間後、Cloud Storageの<br/>画像は自動削除(ライフサイクル設定)
+    Note over User,VertexAI: データは各APIでインメモリ処理のみ<br/>永続化は一切行わない
 ```
 
 ## 2. 参考実装
