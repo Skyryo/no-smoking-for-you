@@ -1,6 +1,7 @@
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Container, Box, Typography } from "@mui/material";
 import QuestionnaireForm from "./components/QuestionnaireForm";
+import IconImage from "../no_smoking_for_you.svg";
 
 const theme = createTheme({
 	palette: {
@@ -21,11 +22,17 @@ function App() {
 					mx: "auto",
 				}}
 			>
+				<img
+					width={100}
+					src={IconImage}
+					alt="Description"
+					style={{ display: "block", margin: "0 auto 0 auto" }}
+				/>
 				<Typography
-					variant="h4"
+					variant="h5"
 					component="h1"
 					gutterBottom
-					sx={{ mt: 4, fontWeight: "bold" }}
+					sx={{ mt: 2, fontWeight: "bold" }}
 					textAlign="center"
 				>
 					このまま喫煙を続けると20年後の貴様はこうだ！！

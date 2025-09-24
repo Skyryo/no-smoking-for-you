@@ -27,6 +27,7 @@ import {
 	SmokingRoomsOutlined as SmokingIcon,
 	HealthAndSafetyOutlined as HealthIcon,
 	PersonOutlined as PersonIcon,
+	EmojiEmotions,
 } from "@mui/icons-material";
 import {
 	fetchSmokingCounseling,
@@ -43,6 +44,7 @@ import type {
 } from "../interface";
 import ImageUploader from "./ImageUploader";
 import ResultDisplay from "./ResultDisplay";
+import IconImage from "../../no_smoking_for_you.svg";
 
 // 健康問題の選択肢
 const HEALTH_ISSUES_OPTIONS = [
@@ -191,6 +193,51 @@ function QuestionnaireForm() {
 				}}
 				imageAnalysisResult={responseAnalyzeImage.analysis}
 			/>
+		);
+	}
+
+	if (loading) {
+		return (
+			<Box
+				sx={{
+					display: "flex",
+					justifyContent: "center",
+					alignItems: "center",
+					height: "100vh",
+				}}
+			>
+				{/* 回転させたいこの画像。アニメーションでずっとぐるぐる */}
+				<Box
+					component="img"
+					width={200}
+					src={IconImage}
+					alt="分析中..."
+					sx={{
+						marginBottom: 2.5,
+						display: "block",
+						animation: "spin 3s linear infinite",
+						transformOrigin: "center",
+						willChange: "transform",
+						"@keyframes spin": {
+							"0%": {
+								transform: "rotate(0deg)",
+							},
+							"100%": {
+								transform: "rotate(360deg)",
+							},
+						},
+						// アクセシビリティ対応：モーション軽減設定がある場合はアニメーションを無効化
+						"@media (prefers-reduced-motion: reduce)": {
+							animation: "none",
+						},
+					}}
+				/>
+				<Typography variant="h6" sx={{ ml: 2 }}>
+					診断中...
+					<br />
+					この処理には30秒ほどかかります
+				</Typography>
+			</Box>
 		);
 	}
 
@@ -477,22 +524,33 @@ function QuestionnaireForm() {
 								{error}
 							</Alert>
 						)}
+						<Divider sx={{ my: 3 }} />
 
-						<ImageUploader setFile={setFile} />
-						{/* 送信ボタン */}
-						<Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-							<Button
-								type="submit"
-								variant="contained"
-								size="large"
-								disabled={loading}
-								startIcon={
-									loading ? <CircularProgress size={20} /> : <HealthIcon />
-								}
-								sx={{ minWidth: 200 }}
+						{/* 画像アップロードセクション */}
+						<Box sx={{ mb: 4 }}>
+							<Typography
+								variant="h6"
+								sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
 							>
-								{loading ? "カウンセリング中..." : "カウンセリング開始"}
-							</Button>
+								<EmojiEmotions /> 現在のお肌の状態（画像アップロード）
+							</Typography>
+
+							<ImageUploader setFile={setFile} />
+							{/* 送信ボタン */}
+							<Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+								<Button
+									type="submit"
+									variant="contained"
+									size="large"
+									disabled={loading}
+									startIcon={
+										loading ? <CircularProgress size={20} /> : <HealthIcon />
+									}
+									sx={{ minWidth: 200 }}
+								>
+									{loading ? "カウンセリング中..." : "カウンセリング開始"}
+								</Button>
+							</Box>
 						</Box>
 					</form>
 				</CardContent>

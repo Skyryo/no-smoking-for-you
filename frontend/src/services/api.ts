@@ -8,6 +8,8 @@ import type {
 	GenerateImageResponse,
 } from "../interface";
 
+// デバッグ用
+// const CLOUD_RUN_API_BASE_URL = "http://0.0.0.0:8000";
 // Cloud Run APIのベースURL
 const CLOUD_RUN_API_BASE_URL =
 	"https://no-smoking-api-9987299071.asia-northeast1.run.app";
